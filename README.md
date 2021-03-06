@@ -4,7 +4,6 @@ Devine, Neumann, Levari, Wilson, &amp; Eppinger (2021), prevalence-induced conce
 ## Directories
 ``` 
 .
-.
 ├── Analysis.R
 ├── data
 │   ├── Dots
