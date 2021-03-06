@@ -1,0 +1,14 @@
+high lf = high fbar
+high lc = high cbar
+
+high fbar = high dv 
+high cbar = high dv
+
+high dv = high p(blue)
+
+so, high lf | high lc = high p(blue)
+
+in decreasing cond, high p(blue) = high PICC
+
+
+
