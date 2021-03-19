@@ -39,7 +39,7 @@ d.dots <-
 dotspiccplot <- 
   d.dots %>% 
   mutate(age_group = factor(ifelse(age_group=='YA', 'Young', 'Old'), 
-                                     levels=c('Young', 'Old')), 
+                            levels=c('Young', 'Old')), 
          timebin4 = factor(timebin4)) %>% 
   group_by(age_group, condition, trialintensity, timebin4) %>% 
   summarise(pBlue = length(response[response == 1])/length(response)) %>%
@@ -61,6 +61,30 @@ dotspiccplot <-
         plot.title = element_text(hjust = 0.5), 
         legend.position = 'bottom')
 
+dotspiccplot_zoom <- 
+  d.dots %>%
+  mutate(age_group = factor(ifelse(age_group=='YA', 'Young', 'Old'), 
+                            levels=c('Young', 'Old')), 
+         stimbin=ntile(trialintensity, 10)) %>% 
+  group_by(id, age_group, condition, stimbin, timebin4) %>% 
+  summarise(pBlue = mean(response), 
+            n=n()) %>% 
+  mutate(timebin4 = factor(timebin4)) %>% 
+  filter(timebin4 == 1 | timebin4 == 4, 
+         stimbin==10) %>% 
+  group_by(id, age_group, condition, stimbin) %>% 
+  summarise(change = pBlue[timebin4==4] - pBlue[timebin4==1]) %>% 
+  ggplot(aes(x = age_group, y = change, fill=condition)) + 
+  stat_summary(fun.y = mean, geom = 'bar', position = position_dodge(0.9), color='black') + 
+  stat_summary(fun.data = mean_se, geom = 'errorbar', position = position_dodge(0.9), width=0) + 
+  labs(x = '',
+       y = '% Change in Colour Judgements\n(First 200 Trials \u2013 Last 200 Trials)', 
+       fill='Condition', 
+       title='Bluest Dot') + 
+  scale_y_continuous(labels=scales::percent_format(accuracy = 1)) + 
+  scale_fill_manual(values=c('#4A3E3D', '#C16527')) + 
+  theme_bw() 
+
 # * Analyse ####
 m0.dots = glmer(response ~ 1 + (1|id) , family = binomial, control=glmerControl(optimizer="bobyqa"), data = d.dots)
 m1.dots = glmer(response ~ trial0*colour0 + (trial0:colour0| id) , family = binomial, control=glmerControl(optimizer="bobyqa"), data = d.dots)
@@ -70,9 +94,9 @@ anova(m3.dots, m2.dots, m1.dots, m0.dots)
 
 Anova(m3.dots)
 contrasts.dots = pairs(emmeans(m3.dots, 
-                            ~age_group:condition:trial0:colour0, 
-                            at=list(trial0 = 0.875, colour0=0.5),
-                            type='response'))
+                               ~age_group:condition:trial0:colour0, 
+                               at=list(trial0 = 0.875, colour0=0.5),
+                               type='response'))
 contrasts.dots.ci = confint(contrasts.dots)
 
 # Ethics ------------------------------------------------------------------
@@ -106,23 +130,17 @@ d.ethics <-
 ethicspiccplot <-
   d.ethics %>%
   mutate(age_group = factor(ifelse(age_group=='YA', 'Young', 'Old'), 
-                                       levels=c('Young', 'Old'))) %>% 
+                            levels=c('Young', 'Old'))) %>% 
   group_by(age_group, condition, normbin, timebin) %>% 
   summarise(pBlue = length(response[response == 1])/length(response)) %>% 
   mutate(timebin = factor(timebin)) %>% 
-  filter(timebin == 1 | timebin == 4) %>% 
-  {
-    . ->> tmp
-    tmp$pBlue[82] = 0.74563
-    tmp$pBlue[86] = 0.74563
-    tmp
-  } %>%
+  filter(timebin == 1 | timebin == 5) %>% 
   ggplot(aes(x = normbin, y = pBlue, color = timebin)) + 
   geom_point() + 
   geom_line(stat="smooth",method = "glm", method.args = list(
     family="binomial"), se=FALSE,size=1.8,alpha=.7) + 
   labs(y = '% Unethical Judgements', x='', color='') +
-  scale_colour_manual(labels=c("Initial 200 trials", "Final 200 trials"), name=NULL,values=c("#0066CC", '#990000')) +
+  scale_colour_manual(labels=c("Initial 48 trials", "Final 48 trials"), name=NULL,values=c("#0066CC", '#990000')) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1), 
                      limits = c(0, 1)) +
   scale_x_continuous(breaks = c(2, 22), 
@@ -133,8 +151,33 @@ ethicspiccplot <-
         plot.title = element_text(hjust = 0.5), 
         legend.position = 'bottom')
 
-ggarrange(dotspiccplot, ethicspiccplot, labels = letters[1:2], 
-          ncol = 2 , common.legend = T, legend='bottom')
+ethicspiccplot_zoom <- 
+  d.ethics %>%
+  mutate(age_group = factor(ifelse(age_group=='YA', 'Young', 'Old'), 
+                            levels=c('Young', 'Old'))) %>% 
+  group_by(id, age_group, condition, normbin, timebin) %>% 
+  summarise(pNorm = mean(response), 
+            n=n()) %>% 
+  mutate(timebin = factor(timebin)) %>% 
+  filter(timebin == 1 | timebin == 5, 
+         normbin==24) %>% 
+  group_by(id, age_group, condition, normbin) %>% 
+  summarise(change = pNorm[timebin==5] - pNorm[timebin==1]) %>% 
+  ggplot(aes(x = age_group, y = change, fill=condition)) + 
+  stat_summary(fun.y = mean, geom = 'bar', position = position_dodge(0.9), color='black') + 
+  stat_summary(fun.data = mean_se, geom = 'errorbar', position = position_dodge(0.9), width=0) + 
+  labs(x = '',
+       y = '% Change in Unethical Judgements\n(First 48 Trials \u2013 Last 48 Trials)', 
+       fill='Condition', 
+       title='Most Unethical Proposal') + 
+  scale_y_continuous(labels=scales::percent_format(accuracy = 1)) + 
+  scale_fill_manual(values=c('#4A3E3D', '#C16527')) + 
+  theme_bw()
+
+# fig. 1
+ggarrange(dotspiccplot, dotspiccplot_zoom,
+          ethicspiccplot, ethicspiccplot_zoom, 
+          labels = letters[1:4], legend='bottom')
 
 # * Analyse #### 
 m0.ethics = glmer(response ~ 1 + (1 | id), family = binomial, control=glmerControl(optimizer="bobyqa"), data = d.ethics)
@@ -146,9 +189,9 @@ anova(m3.ethics, m2.ethics, m1.ethics, m0.ethics)
 Anova(m3.ethics)
 
 contrasts.ethics = pairs(emmeans(m3.ethics, 
-                               ~age_group:condition:trial0:norm_mean0,
-                               at = list(trial0 = 0.875, norm_mean0 = 0.2904039),
-                               type='response'))
+                                 ~age_group:condition:trial0:norm_mean0,
+                                 at = list(trial0 = 0.875, norm_mean0 = 0.2904039),
+                                 type='response'))
 contrasts.ethics.ci = confint(contrasts.ethics)
 
 # Sequential Choice Model (Wilson, 2018) ####
@@ -170,10 +213,10 @@ for(p in 1:length(pars)) {
   if(pars[p]=='B0') {
     ylab = 'Parameter\nValue' 
     plotlab = 'a'
-    } else {
-      ylab = ''
-      plotlab = ''
-    }
+  } else {
+    ylab = ''
+    plotlab = ''
+  }
   thisdotplot <- 
     dots.fit %>%
     select(id, age_group, condition, pars[p]) %>%
@@ -246,7 +289,7 @@ for(p in 1:length(pars)) {
   
   n = length(plots)+1
   plots[[n]] <- thisethicsplot
-  }
+}
 
 ggarrange(plotlist = plots, common.legend = T, legend = 'bottom', nrow = 2, ncol = 6)
 
@@ -280,7 +323,7 @@ mRT.dots <- lm(meanRT ~ age_group*condition, data=RTsum[RTsum$task=='Dots',])
 mRT.dots.confint <- confint(mRT.dots)
 mRT.ethics <- lm(meanRT ~ age_group*condition, data=RTsum[RTsum$task=='Ethics',]) 
 mRT.ethics.confint <- confint(mRT.ethics)
-  
+
 # Drift Diffusion Model of Dots Data ---------------------------------------------------
 library(rtdists) # needed to compute drift diffusion likelihood
 source('Models/DDM/fitddm.R')
